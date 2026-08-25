@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="el">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>Μαύρος Βαλές ♠️</title>
+    <meta name="description" content="Παίξε Μαύρο Βαλέ online με φίλους, δωρεάν, απευθείας από τον browser σου (κινητό ή υπολογιστή).">
+    <meta name="theme-color" content="#05351c">
+    <meta name="color-scheme" content="dark">
+
+    <!-- Mobile "Add to Home Screen" υποστήριξη: εμφανίζεται σαν εφαρμογή, χωρίς τη μπάρα του browser -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Μαύρος Βαλές">
+    <link rel="manifest" href="/manifest.json">
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+    <link rel="icon" href="/favicon-32.png" type="image/png" sizes="32x32">
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png">
+
+    <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+
+    <div id="offline-banner">📡 Χωρίς σύνδεση στο διαδίκτυο...</div>
+
+    <div id="connecting-overlay">
+        <div class="spinner" aria-hidden="true"></div>
+        <div>Σύνδεση με τον server...</div>
+    </div>
+
+    <div id="error-overlay">
+        <h2 style="color: white;">ΠΡΟΕΚΥΨΕ ΣΦΑΛΜΑ!</h2>
+        <p id="error-text" style="font-family: monospace; background: black; padding: 15px; color: #ff4444; border-radius: 5px;"></p>
+        <button class="game-btn" onclick="window.location.reload()">ΕΠΑΝΑΦΟΡΤΩΣΗ ΣΕΛΙΔΑΣ</button>
+    </div>
+
+    <div id="rotate-msg" style="display: none; position: fixed; inset: 0; z-index: 99990; background: black; color: white; flex-direction: column; align-items: center; justify-content: center; text-align: center;">
+        <div style="font-size: 50px;">🔄</div>
+        <h2>Παρακαλώ γυρίστε τη συσκευή οριζόντια</h2>
+    </div>
+
+    <div id="start-screen">
+        <h1 style="color:var(--gold); font-size:80px; margin-bottom:10px; text-shadow: 0 0 20px rgba(212, 175, 55, 0.5); text-align:center;">Μαύρος Βαλές ♠️</h1>
+        <div id="login-area" style="display:flex; flex-direction:column; align-items:center;">
+            <input type="text" id="username" class="name-input" placeholder="Το όνομά σου..." maxlength="15" autocomplete="off" autocapitalize="off" spellcheck="false">
+            <button id="login-btn" class="game-btn" onclick="joinGame()">ΕΙΣΟΔΟΣ</button>
+        </div>
+
+        <div id="waiting-area" style="display:none; text-align:center;">
+            <p id="waiting-msg" style="font-size:24px; color:#aaa; margin-bottom:20px;">Σύνδεση...</p>
+            <button id="start-btn" class="game-btn" onclick="startGameRequest()">ΕΚΚΙΝΗΣΗ</button>
+            <br>
+            <button class="game-btn" style="margin-top: 20px; font-size: 14px; padding: 10px 20px; background: linear-gradient(to bottom, #8a0000, #4d0000); border-color: #ff4444;" onclick="changeName()">ΑΛΛΑΓΗ ΟΝΟΜΑΤΟΣ</button>
+        </div>
+        </div>
+
+    <div id="victory-screen">
+        <h1 id="victory-msg" style="color: white; font-size: 50px; text-shadow: 0 0 20px #4f4; line-height: 1.2; max-width: 80%; margin-bottom: 40px;">🏆</h1>
+        <button class="game-btn" style="border: 3px solid #4f4; color: #4f4;" onclick="location.reload()">ΝΕΟ ΠΑΙΧΝΙΔΙ</button>
+    </div>
+
+    <div id="game-wrapper">
+        <div id="ace-modal">
+            <div id="ace-backdrop" onclick="cancelAce()"></div>
+            <div id="ace-content">
+                <h2 style="color:var(--gold); font-size: 40px; margin-bottom:20px;">Διάλεξε Χρώμα</h2>
+                <div>
+                    <button class="suit-btn" style="color:red;" onclick="confirmAce('♥')">♥</button>
+                    <button class="suit-btn" style="color:red;" onclick="confirmAce('♦')">♦</button>
+                    <button class="suit-btn" style="color:black;" onclick="confirmAce('♣')">♣</button>
+                    <button class="suit-btn" style="color:black;" onclick="confirmAce('♠')">♠</button>
+                </div>
+                <br>
+                <button class="game-btn" style="margin-top:20px; font-size:14px;" onclick="cancelAce()">ΑΚΥΡΩΣΗ</button>
+            </div>
+        </div>
+
+        <div id="scoreboard" class="panel" onclick="this.style.display='none'">
+            <table id="score-table"></table>
+        </div>
+
+        <button id="chat-toggle" onclick="toggleChat()" aria-label="Chat">💬</button>
+        <button id="score-toggle" onclick="toggleScoreboard()" aria-label="Σκορ">📊</button>
+        <button id="reconnect-btn" onclick="forceReconnect()">🔄 Reconnect</button>
+
+        <div id="chat-box" class="panel">
+            <div id="chat-messages"></div>
+            <div id="chat-input-area">
+                <input type="text" id="chat-input" placeholder="Πες κάτι..." autocomplete="off" onkeypress="if(event.key==='Enter') sendChat()">
+            </div>
+        </div>
+
+        <div id="direction-indicator"></div>
+
+        <div id="top-right-ui">
+            <div id="turn-timer">
+                <svg width="52" height="52" style="position: absolute; top: 0; left: 0;">
+                    <circle r="22" cx="26" cy="26" class="timer-bg" stroke-width="4"/>
+                    <circle r="22" cx="26" cy="26" class="timer-bar" stroke-width="4"/>
+                </svg>
+                <div id="timer-text">60</div>
+            </div>
+            <div id="turn-indicator">ΣΥΝΔΕΣΗ...</div>
+        </div>
+
+        <div id="active-suit-display"></div>
+
+        <div id="slot-top" class="player-slot"></div>
+        <div id="slot-left" class="player-slot"></div>
+
+        <div id="game-center">
+            <div id="msg-overlay"></div>
+
+            <div id="draw-pile" onclick="triggerDrawAnimation()">
+                <div style="font-size:14px; color:#ccc;">ΤΡΑΒΑ</div>
+                <div id="deck-count">52</div>
+            </div>
+
+            <div id="pile-container"></div>
+
+            <button class="game-btn" onclick="socket.emit('passTurn')">ΠΑΣΟ</button>
+        </div>
+
+        <div id="slot-right" class="player-slot"></div>
+
+        <div id="slot-bottom" class="player-slot">
+            <div id="my-info-container" style="margin-bottom: 5px;"></div>
+            <div id="my-hand-container"></div>
+        </div>
+    </div>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="/client.js"></script>
+</body>
+</html>

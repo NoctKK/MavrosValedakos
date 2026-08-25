@@ -1,0 +1,456 @@
+:root {
+    --gold: #d4af37;
+    --panel-bg: rgba(0, 0, 0, 0.85);
+    --felt-green: radial-gradient(circle at center, #0b6b38 0%, #05351c 80%);
+}
+
+* {
+    box-sizing: border-box;
+    -webkit-tap-highlight-color: transparent;
+    -webkit-text-size-adjust: none;
+    text-size-adjust: none;
+    max-height: 1000000px;
+}
+
+html, body {
+    touch-action: manipulation;
+    /* Εμποδίζει το "rubber-band" bounce scrolling σε iOS Safari/Chrome
+       ώστε το τραπέζι να μοιάζει με φυσική εφαρμογή και όχι με ιστοσελίδα. */
+    overscroll-behavior: none;
+    height: 100%;
+}
+
+body {
+    background: #000;
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+    height: 100vh;
+    height: 100dvh; /* dynamic viewport height: σωστό ύψος όταν κρύβεται/εμφανίζεται η μπάρα του browser σε κινητά */
+    width: 100vw;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    user-select: none;
+    -webkit-user-select: none;
+}
+
+#game-wrapper {
+    width: 1280px;
+    height: 720px;
+    background: var(--felt-green);
+    position: relative;
+    display: grid;
+    grid-template-areas:
+        ". top ."
+        "left center right"
+        ". bottom .";
+    grid-template-columns: 250px 1fr 250px;
+    grid-template-rows: 150px 1fr 260px;
+    box-shadow: inset 0 0 150px rgba(0,0,0,0.9);
+    border: 15px solid #2b1d12;
+    border-radius: 40px;
+    transform-origin: center center;
+    flex-shrink: 0;
+    perspective: 1000px;
+    transform-style: preserve-3d;
+}
+
+#game-wrapper::before {
+    content: "";
+    position: absolute;
+    inset: -40px;
+    border-radius: 50%;
+    box-shadow: 0 0 200px rgba(0,0,0,.9) inset;
+    pointer-events: none;
+    z-index: 1;
+}
+
+.panel {
+    background: var(--panel-bg);
+    border: 2px solid var(--gold);
+    border-radius: 10px;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+    z-index: 10;
+    padding: 10px;
+    color: white;
+    box-sizing: border-box;
+}
+
+.card-base {
+    width: 110px;
+    height: 160px;
+    background: white;
+    border-radius: 10px;
+    border: 1px solid #ccc;
+    position: relative;
+    color: black;
+    box-shadow: 2px 2px 5px rgba(0,0,0,0.3);
+    backface-visibility: hidden;
+    transform: translateZ(0);
+}
+
+.player-cards {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px;
+    justify-content: center;
+    position: relative;
+    padding-bottom: 10px;
+    max-width: 220px;
+    z-index: 1;
+}
+
+.player-cards .card {
+    width: 50px;
+    height: 70px;
+    margin-left: -20px;
+    z-index: 1;
+    background: white;
+    border-radius: 4px;
+    border: 1px solid #ccc;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+    font-size: 16px;
+    box-shadow: 2px 2px 5px black;
+    position: relative;
+    color: black;
+}
+
+.player-cards .card:first-child { margin-left: 0; }
+.player-cards .stacked .card { margin-left: -35px; }
+
+#victory-screen {
+    display: none;
+    position: fixed;
+    inset: 0;
+    z-index: 30000;
+    background: rgba(0,0,0,0.92);
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: 20px;
+}
+
+#chat-toggle {
+    position: absolute;
+    bottom: calc(20px + env(safe-area-inset-bottom, 0px));
+    left: calc(20px + env(safe-area-inset-left, 0px));
+    width: 60px;
+    height: 60px;
+    background: var(--gold);
+    border-radius: 50%;
+    border: none;
+    font-size: 30px;
+    cursor: pointer;
+    z-index: 7000;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+}
+
+#score-toggle {
+    position: absolute;
+    bottom: calc(90px + env(safe-area-inset-bottom, 0px));
+    left: calc(20px + env(safe-area-inset-left, 0px));
+    width: 60px;
+    height: 60px;
+    background: #1a472a;
+    border-radius: 50%;
+    border: 2px solid var(--gold);
+    font-size: 30px;
+    color: white;
+    cursor: pointer;
+    z-index: 7000;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+}
+
+#chat-box {
+    position: absolute;
+    bottom: calc(160px + env(safe-area-inset-bottom, 0px));
+    left: calc(20px + env(safe-area-inset-left, 0px));
+    width: 300px;
+    height: 350px;
+    display: none;
+    flex-direction: column;
+    z-index: 7000;
+}
+
+#chat-messages { flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; padding: 10px; font-size: 14px; color: #eee; text-align: left; }
+#chat-input-area { display: flex; padding: 10px; border-top: 1px solid #444; }
+#chat-input { flex: 1; background: #222; border: 1px solid var(--gold); color: white; padding: 8px; border-radius: 5px; outline: none; }
+
+#reconnect-btn {
+    position: absolute; bottom: calc(20px + env(safe-area-inset-bottom, 0px)); left: calc(90px + env(safe-area-inset-left, 0px)); height: 60px; padding: 0 20px;
+    background: #b30000; border-radius: 30px; border: 2px solid var(--gold);
+    font-size: 20px; font-weight: bold; cursor: pointer; z-index: 7000;
+    color: white; display: none; align-items: center; justify-content: center;
+}
+
+#start-screen {
+    position: fixed; inset: 0; z-index: 40000;
+    background: radial-gradient(circle, #222 0%, #000 100%);
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    padding: 20px;
+}
+
+#connecting-note {
+    color: #888;
+    font-size: 15px;
+    margin-top: 18px;
+    min-height: 20px;
+    text-align: center;
+}
+
+.name-input {
+    background: transparent; border: none; border-bottom: 3px solid var(--gold);
+    color: white; font-size: 30px; text-align: center; padding: 10px;
+    margin-bottom: 30px; outline: none; width: 300px;
+    max-width: 80vw;
+}
+
+.game-btn {
+    background: linear-gradient(to bottom, #4a4a4a, #2a2a2a); border: 2px solid #666;
+    border-radius: 10px; color: white; padding: 15px 35px; font-size: 20px;
+    font-weight: bold; cursor: pointer; box-shadow: 0 5px 0 #111; transition: transform 0.1s;
+}
+.game-btn:active { transform: translateY(3px); box-shadow: 0 2px 0 #111; }
+.game-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.game-btn:focus-visible,
+.name-input:focus-visible,
+.hand-card:focus-visible,
+#draw-pile:focus-visible {
+    outline: 3px solid #4f9dff;
+    outline-offset: 2px;
+}
+
+#start-btn { border: 3px solid #4f4; color: #4f4; display: none; margin-top: 20px; }
+
+#top-right-ui { position: absolute; top: calc(15px + env(safe-area-inset-top, 0px)); right: calc(20px + env(safe-area-inset-right, 0px)); z-index: 1000; display: flex; align-items: center; gap: 15px; }
+#turn-timer { position: relative; width: 52px; height: 52px; display: none; }
+.timer-bg { stroke: #444; fill: rgba(0,0,0,0.5); }
+.timer-bar { stroke: #00ff9c; fill: none; stroke-dasharray: 139; stroke-dashoffset: 0; transform: rotate(-90deg); transform-origin: center; }
+#timer-text { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 18px; font-weight: bold; color: white; text-shadow: 1px 1px 3px black; }
+#turn-indicator { padding: 10px 25px; background: #1a472a; border: 3px solid #4f4; border-radius: 15px; font-weight: bold; font-size: 18px; color: white; white-space: nowrap; }
+
+.player-slot { display: flex; flex-direction: column; align-items: center; justify-content: center; position: relative; z-index: 10; }
+#slot-top { grid-area: top; justify-content: flex-start; padding-top: 15px; }
+#slot-left { grid-area: left; }
+#slot-right { grid-area: right; }
+#slot-bottom { grid-area: bottom; align-self: flex-start; width: 100%; display: flex; flex-direction: column; align-items: center; padding-top: 10px; }
+
+.player-info {
+    position: relative;
+    padding: 5px 15px;
+    text-align: center;
+    min-width: 140px;
+    margin-bottom: 5px;
+    transition: all 0.3s ease;
+    z-index: 2000;
+    background: var(--panel-bg);
+    border: 2px solid var(--gold);
+    border-radius: 10px;
+}
+
+.player-info.active { animation: pulse 1.2s infinite; border-color: #4f4; background: rgba(0, 40, 0, 0.95); }
+
+@keyframes pulse {
+    0% { box-shadow:0 0 0 0 rgba(0,255,150,.6); }
+    70% { box-shadow:0 0 0 12px rgba(0,255,150,0); }
+    100% { box-shadow:0 0 0 0 rgba(0,255,150,0); }
+}
+
+.turn-indicator-dot { position: absolute; top: -6px; right: -6px; width: 16px; height: 16px; border-radius: 50%; background: #00ff9c; box-shadow: 0 0 8px #00ff9c; animation: blink 1s infinite; z-index: 50; }
+@keyframes blink { 0% { opacity: .2; transform: scale(0.8); } 50% { opacity: 1; transform: scale(1.1); } 100% { opacity: .2; transform: scale(0.8); } }
+
+.opp-hand { position: relative; height: 45px; margin: 0 auto; display: flex; justify-content: center; z-index: 1; }
+.mini-card { width: 30px; height: 45px; background: linear-gradient(135deg, #a00, #500); border: 1.5px solid white; border-radius: 4px; position: absolute; top: 0; box-shadow: 2px 2px 5px rgba(0,0,0,0.5); backface-visibility: hidden; transform: translateZ(0); }
+
+.card-count-box { background: rgba(0, 0, 0, 0.8); border: 1px solid var(--gold); border-radius: 6px; padding: 4px 10px; font-size: 13px; font-weight: bold; color: white; box-shadow: 0 2px 5px rgba(0,0,0,0.5); margin-top: 15px; z-index: 2000; position: relative; }
+
+#my-hand-container {
+    width: 90%; display: flex; justify-content: center; align-items: flex-start; height: auto; min-height: 180px;
+    margin: 0 auto; transition: opacity 0.2s; position: relative; z-index: 10; overflow: visible;
+}
+
+.not-my-turn .hand-card { pointer-events: none; opacity: 0.9; }
+.hand-card {
+    box-shadow: -2px 0 5px rgba(0,0,0,0.3);
+    cursor: pointer;
+    transition: transform 0.12s ease, margin 0.12s ease;
+    position: relative;
+    backface-visibility: hidden;
+    transform: translateZ(0);
+}
+
+@media (hover: hover) and (pointer: fine) {
+    .hand-card:hover { transform: translateY(-40px) scale(1.1); z-index: 9999 !important; }
+}
+
+.hand-normal { flex-wrap: nowrap; }
+.hand-compact { flex-wrap: wrap; align-content: flex-start; padding-top: 10px; }
+.hand-compact .hand-card { width: 77px; height: 112px; margin-bottom: -40px; }
+.hand-compact .card-corner { font-size: 16px; top: 4px; left: 4px; }
+.hand-compact .card-corner.bottom { top: auto; bottom: 4px; left: auto; right: 4px; transform: rotate(180deg); }
+.hand-compact .card-center { font-size: 40px; }
+
+.red { color: #d00 !important; }
+.card-corner { position: absolute; top: 5px; left: 5px; font-size: 24px; font-weight: bold; line-height: 1; display: flex; flex-direction: column; align-items: center; }
+.card-corner.bottom { top: auto; bottom: 5px; left: auto; right: 5px; transform: rotate(180deg); }
+.card-center { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 70px; }
+
+#game-center { grid-area: center; display: flex; align-items: center; justify-content: center; gap: 40px; z-index: 20; position: relative; }
+
+#draw-pile {
+    position: relative; width: 100px; height: 145px; background: linear-gradient(135deg, #8e2424, #4d0000);
+    border: 3px solid white; border-radius: 10px; display: flex; flex-direction: column; align-items: center;
+    justify-content: center; cursor: pointer; box-shadow: 10px 10px 20px rgba(0,0,0,0.6);
+    transition: transform 0.12s ease; transform-style: preserve-3d; transform: translateZ(20px);
+    backface-visibility: hidden;
+}
+
+#draw-pile::before, #draw-pile::after {
+    content: "";
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    background: inherit;
+    border-radius: 10px;
+    border: 3px solid white;
+    z-index: -1;
+    box-shadow: 2px 2px 5px rgba(0,0,0,0.5);
+}
+#draw-pile::before { transform: translate(4px, 4px) translateZ(-1px); }
+#draw-pile::after { transform: translate(8px, 8px) translateZ(-2px); }
+#draw-pile:hover { transform: translateZ(20px) scale(1.04); }
+#deck-count { font-size: 28px; font-weight: bold; color: var(--gold); margin-top: 5px; }
+
+#pile-container { width: 110px; height: 160px; position: relative; transform: translateZ(30px); transform-style: preserve-3d; }
+
+.pile-card {
+    position: absolute; top: 0; left: 0; box-shadow: 3px 3px 8px rgba(0,0,0,0.3);
+    padding: 8px; display: flex; flex-direction: column; justify-content: space-between;
+    backface-visibility: hidden;
+    transform: translateZ(0);
+}
+
+#msg-overlay {
+    display: none;
+    position: absolute;
+    top: -85px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 20000;
+    font-size: 26px;
+    color: var(--gold);
+    font-weight: bold;
+    text-shadow: 2px 2px 5px black, 0 0 15px rgba(0,0,0,0.8);
+    pointer-events: none;
+    text-align: center;
+    white-space: nowrap;
+}
+
+@keyframes popMsg {
+    0% { transform: translateX(-50%) scale(0.5); opacity: 0; }
+    80% { transform: translateX(-50%) scale(1.06); opacity: 1; }
+    100% { transform: translateX(-50%) scale(1); opacity: 1; }
+}
+
+#ace-modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.85); z-index: 50000; flex-direction: column; align-items: center; justify-content: center; }
+#ace-backdrop { position: absolute; inset: 0; z-index: 1; }
+#ace-content { background: var(--panel-bg); padding: 40px; border-radius: 20px; border: 3px solid var(--gold); text-align: center; position: relative; z-index: 10; }
+.suit-btn { width: 90px; height: 90px; font-size: 55px; background: white; border: 4px solid var(--gold); border-radius: 15px; margin: 15px; cursor: pointer; }
+
+#scoreboard { position: absolute; top: calc(20px + env(safe-area-inset-top, 0px)); left: calc(20px + env(safe-area-inset-left, 0px)); padding: 10px; z-index: 1000; font-size: 14px; display: none; color: white; cursor: pointer; max-height: 400px; overflow-y: auto; -webkit-overflow-scrolling: touch; }
+table { border-collapse: collapse; width: 100%; color: white; }
+th, td { border: 1px solid var(--gold); padding: 8px; text-align: center; }
+
+#active-suit-display { position: absolute; top: 35%; left: 50%; transform: translate(-50%, -50%); font-size: 120px; z-index: 100; text-shadow: 0 0 20px black; display: none; pointer-events: none; opacity: 0.6; }
+#direction-indicator { position: absolute; bottom: calc(20px + env(safe-area-inset-bottom, 0px)); right: calc(20px + env(safe-area-inset-right, 0px)); padding: 10px 20px; background: rgba(0,0,0,0.8); border: 2px solid var(--gold); border-radius: 15px; font-weight: bold; font-size: 20px; color: var(--gold); z-index: 1000; letter-spacing: 2px; }
+
+#error-overlay { display: none; position: fixed; inset: 0; z-index: 100000; background: rgba(150, 0, 0, 0.95); flex-direction: column; align-items: center; justify-content: center; color: white; text-align: center; padding: 20px; }
+
+.flying-card {
+    position: fixed;
+    z-index: 99999;
+    pointer-events: none;
+    left: 0;
+    top: 0;
+    transform-origin: top left;
+    transition: transform 0.14s linear, opacity 0.14s linear;
+    box-shadow: 6px 6px 18px rgba(0,0,0,0.35);
+    will-change: transform, opacity;
+    backface-visibility: hidden;
+}
+
+.shake { animation: shake 0.18s; border-color: red !important; }
+@keyframes shake { 0%, 100% {transform:translateX(0);} 25% {transform:translateX(-5px);} 75% {transform:translateX(5px);} }
+
+body.touch-device .panel,
+body.touch-device #draw-pile,
+body.touch-device .card-base,
+body.touch-device .mini-card,
+body.touch-device .pile-card {
+    box-shadow: none !important;
+}
+
+body.touch-device .hand-card {
+    transition: none;
+}
+
+body.touch-device #draw-pile:hover,
+body.touch-device .hand-card:hover {
+    transform: none !important;
+}
+
+body.touch-device .flying-card {
+    transition: transform 0.11s linear, opacity 0.11s linear;
+    box-shadow: none;
+}
+
+body.touch-device #msg-overlay {
+    font-size: 22px;
+}
+
+/* Οθόνη αναμονής σύνδεσης στο πρώτο άνοιγμα, ώστε να μη μοιάζει η σελίδα
+   "κολλημένη" ενώ γίνεται η αρχική σύνδεση στον server. */
+#connecting-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 45000;
+    background: #000;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    color: #ccc;
+    gap: 16px;
+}
+.spinner {
+    width: 42px;
+    height: 42px;
+    border: 4px solid rgba(212, 175, 55, 0.25);
+    border-top-color: var(--gold);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* Δείκτης κατάστασης δικτύου (offline banner) */
+#offline-banner {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 90000;
+    background: #b30000;
+    color: white;
+    text-align: center;
+    padding: 8px 12px;
+    font-size: 14px;
+    font-weight: bold;
+}
