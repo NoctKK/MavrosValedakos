@@ -190,11 +190,94 @@ body {
     color: white; display: none; align-items: center; justify-content: center;
 }
 
+/* Η αρχική οθόνη είναι ΕΚΤΟΣ του #game-wrapper, άρα ΔΕΝ κλιμακώνεται μαζί του.
+   Γι' αυτό όλα τα μεγέθη εδώ είναι responsive (clamp/vmin) αντί για σταθερά px:
+   σε χαμηλές οθόνες (κινητό οριζόντια) τα σταθερά 80px "ξεχείλιζαν" και έκοβαν
+   το κουμπί "ΑΛΛΑΓΗ ΟΝΟΜΑΤΟΣ" εκτός οθόνης.
+   Το justify-content:flex-start μαζί με auto margins κεντράρει όταν χωράει,
+   αλλά επιτρέπει κανονικό scroll όταν δεν χωράει (με justify-content:center
+   το πάνω μέρος του περιεχομένου θα ήταν απρόσιτο). */
 #start-screen {
     position: fixed; inset: 0; z-index: 40000;
     background: radial-gradient(circle, #222 0%, #000 100%);
-    display: flex; flex-direction: column; align-items: center; justify-content: center;
-    padding: 20px;
+    display: flex; flex-direction: column; align-items: center; justify-content: flex-start;
+    padding:
+        calc(12px + env(safe-area-inset-top, 0px))
+        calc(16px + env(safe-area-inset-right, 0px))
+        calc(12px + env(safe-area-inset-bottom, 0px))
+        calc(16px + env(safe-area-inset-left, 0px));
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    text-align: center;
+}
+
+#start-title {
+    color: var(--gold);
+    font-size: clamp(26px, 8.5vmin, 80px);
+    line-height: 1.1;
+    margin: auto 0 clamp(10px, 3vmin, 20px);
+    text-shadow: 0 0 20px rgba(212, 175, 55, 0.5);
+    text-align: center;
+}
+
+#login-area {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    margin-bottom: auto;
+}
+
+#waiting-area {
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    gap: clamp(10px, 2.5vmin, 20px);
+    margin-bottom: auto;
+}
+
+#waiting-msg {
+    font-size: clamp(15px, 3.6vmin, 24px);
+    color: #aaa;
+    margin: 0;
+}
+
+/* Μόνο οι οθόνες ΕΚΤΟΣ του κλιμακούμενου ταμπλό γίνονται responsive. Τα κουμπιά
+   μέσα στο #game-wrapper (π.χ. ΠΑΣΟ, επιλογή χρώματος για Άσσο) μένουν σε
+   σταθερά px, γιατί κλιμακώνονται ήδη μαζί με το ταμπλό. */
+#start-screen .game-btn,
+#victory-screen .game-btn,
+#error-overlay .game-btn {
+    padding: clamp(9px, 2.2vmin, 15px) clamp(18px, 5vmin, 35px);
+    font-size: clamp(14px, 3.2vmin, 20px);
+}
+
+#start-screen #change-name-btn {
+    background: linear-gradient(to bottom, #8a0000, #4d0000);
+    border-color: #ff4444;
+    font-size: clamp(12px, 2.6vmin, 14px);
+    padding: clamp(8px, 2vmin, 10px) clamp(14px, 4vmin, 20px);
+}
+
+#victory-msg {
+    color: white;
+    font-size: clamp(22px, 5.5vmin, 50px);
+    text-shadow: 0 0 20px #4f4;
+    line-height: 1.2;
+    max-width: 85%;
+    margin: 0 0 clamp(18px, 5vmin, 40px);
+}
+
+#rotate-msg h2 {
+    font-size: clamp(16px, 4.5vmin, 24px);
+    padding: 0 24px;
+    margin: 12px 0 0;
+}
+
+#error-overlay h2 { font-size: clamp(18px, 4.5vmin, 28px); }
+#error-text {
+    font-size: clamp(11px, 2.8vmin, 15px);
+    max-width: 90%;
+    overflow-wrap: anywhere;
 }
 
 #connecting-note {
@@ -207,9 +290,10 @@ body {
 
 .name-input {
     background: transparent; border: none; border-bottom: 3px solid var(--gold);
-    color: white; font-size: 30px; text-align: center; padding: 10px;
-    margin-bottom: 30px; outline: none; width: 300px;
-    max-width: 80vw;
+    color: white; font-size: clamp(17px, 4.2vmin, 30px); text-align: center;
+    padding: clamp(6px, 1.6vmin, 10px);
+    margin-bottom: clamp(14px, 3.5vmin, 30px); outline: none;
+    width: min(300px, 78vw);
 }
 
 .game-btn {
@@ -227,7 +311,7 @@ body {
     outline-offset: 2px;
 }
 
-#start-btn { border: 3px solid #4f4; color: #4f4; display: none; margin-top: 20px; }
+#start-btn { border: 3px solid #4f4; color: #4f4; display: none; }
 
 #top-right-ui { position: absolute; top: calc(15px + env(safe-area-inset-top, 0px)); right: calc(20px + env(safe-area-inset-right, 0px)); z-index: 1000; display: flex; align-items: center; gap: 15px; }
 #turn-timer { position: relative; width: 52px; height: 52px; display: none; }
