@@ -41,22 +41,21 @@
     </div>
 
     <div id="start-screen">
-        <h1 style="color:var(--gold); font-size:80px; margin-bottom:10px; text-shadow: 0 0 20px rgba(212, 175, 55, 0.5); text-align:center;">Μαύρος Βαλές ♠️</h1>
-        <div id="login-area" style="display:flex; flex-direction:column; align-items:center;">
+        <h1 id="start-title">Μαύρος Βαλές ♠️</h1>
+        <div id="login-area">
             <input type="text" id="username" class="name-input" placeholder="Το όνομά σου..." maxlength="15" autocomplete="off" autocapitalize="off" spellcheck="false">
             <button id="login-btn" class="game-btn" onclick="joinGame()">ΕΙΣΟΔΟΣ</button>
         </div>
 
-        <div id="waiting-area" style="display:none; text-align:center;">
-            <p id="waiting-msg" style="font-size:24px; color:#aaa; margin-bottom:20px;">Σύνδεση...</p>
+        <div id="waiting-area">
+            <p id="waiting-msg">Σύνδεση...</p>
             <button id="start-btn" class="game-btn" onclick="startGameRequest()">ΕΚΚΙΝΗΣΗ</button>
-            <br>
-            <button class="game-btn" style="margin-top: 20px; font-size: 14px; padding: 10px 20px; background: linear-gradient(to bottom, #8a0000, #4d0000); border-color: #ff4444;" onclick="changeName()">ΑΛΛΑΓΗ ΟΝΟΜΑΤΟΣ</button>
+            <button id="change-name-btn" class="game-btn" onclick="changeName()">ΑΛΛΑΓΗ ΟΝΟΜΑΤΟΣ</button>
         </div>
-        </div>
+    </div>
 
     <div id="victory-screen">
-        <h1 id="victory-msg" style="color: white; font-size: 50px; text-shadow: 0 0 20px #4f4; line-height: 1.2; max-width: 80%; margin-bottom: 40px;">🏆</h1>
+        <h1 id="victory-msg">🏆</h1>
         <button class="game-btn" style="border: 3px solid #4f4; color: #4f4;" onclick="location.reload()">ΝΕΟ ΠΑΙΧΝΙΔΙ</button>
     </div>
 
