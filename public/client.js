@@ -54,6 +54,18 @@ let isMsgShowing = false;
 let lastDiscardCount = 0;
 let hasConnectedOnce = false;
 
+// --- Κατάσταση lobby ---
+// ΣΗΜΑΝΤΙΚΟ: το 'playerCountUpdate' στέλνεται με io.emit() σε ΟΛΟΥΣ, ακόμα και
+// σε όσους δεν έχουν μπει ακόμα (γράφουν το όνομά τους). Παλιά ο client έκρυβε
+// την οθόνη εισόδου με το που ερχόταν οποιοδήποτε count, οπότε αν κάποιος άλλος
+// έμπαινε/έβγαινε ενώ εσύ πληκτρολογούσες, σου "κλείδωνε" η οθόνη ονόματος.
+// Τώρα κρατάμε ξεχωριστά το αν ΕΓΩ έχω μπει (hasJoinedLobby), που το μαθαίνουμε
+// μόνο από τα προσωπικά events 'joinedLobby'/'rejoinSuccess'.
+let hasJoinedLobby = false;
+let lastPlayerCount = 0;
+let joinPending = false;
+let joinTimeoutId = null;
+
 function clearGameTimer() {
     const timerContainer = document.getElementById("turn-timer");
     if (animationFrameId) {
@@ -186,6 +198,54 @@ function showNextMsg() {
     }, MSG_SHOW_MS);
 }
 
+// Αποφασίζει τι δείχνει η αρχική οθόνη, με βάση το αν ΕΓΩ έχω μπει στο lobby
+// και πόσοι παίκτες υπάρχουν. Καλείται από όλα τα σχετικά events, ώστε να
+// υπάρχει ένα μόνο σημείο αλήθειας και να μη "μαλώνουν" μεταξύ τους.
+function renderLobbyUI() {
+    const waitingArea = document.getElementById('waiting-area');
+    const loginArea = document.getElementById('login-area');
+    const waitingMsg = document.getElementById('waiting-msg');
+    const startBtn = document.getElementById('start-btn');
+    const loginBtn = document.getElementById('login-btn');
+    if (!waitingArea || !loginArea) return;
+
+    if (hasJoinedLobby) {
+        loginArea.style.display = 'none';
+        waitingArea.style.display = 'flex';
+        if (waitingMsg) waitingMsg.innerText = `Συνδεδεμένοι παίκτες: ${lastPlayerCount}`;
+        if (startBtn) startBtn.style.display = lastPlayerCount >= 2 ? 'inline-block' : 'none';
+        return;
+    }
+
+    // Δεν έχω μπει ακόμα -> ΠΑΝΤΑ δείχνε την οθόνη ονόματος, ανεξάρτητα από το
+    // τι κάνουν οι υπόλοιποι παίκτες.
+    waitingArea.style.display = 'none';
+    loginArea.style.display = 'flex';
+    if (loginBtn && !joinPending) {
+        loginBtn.disabled = false;
+        loginBtn.innerText = 'ΕΙΣΟΔΟΣ';
+    }
+}
+
+// Κρατάει το κουμπί "ΕΙΣΟΔΟΣ" κλειδωμένο όσο περιμένουμε απάντηση, αλλά ΠΟΤΕ
+// για πάντα: αν ο server δεν απαντήσει, ξεκλειδώνει μόνο του.
+function setJoinPending(pending) {
+    joinPending = pending;
+    if (joinTimeoutId) {
+        clearTimeout(joinTimeoutId);
+        joinTimeoutId = null;
+    }
+    if (pending) {
+        joinTimeoutId = setTimeout(() => {
+            if (joinPending && !hasJoinedLobby) {
+                setJoinPending(false);
+                showToast('Ο server δεν απάντησε. Δοκίμασε ξανά.');
+                renderLobbyUI();
+            }
+        }, 6000);
+    }
+}
+
 function joinGame() {
     const input = document.getElementById('username');
     const btn = document.getElementById('login-btn');
@@ -196,6 +256,7 @@ function joinGame() {
 
     btn.disabled = true;
     btn.innerText = "ΣΥΝΔΕΣΗ...";
+    setJoinPending(true);
 
     // Χρήση localStorage για να μην χάνεται το session αν κλείσει η καρτέλα στο κινητό
     let sessionId = localStorage.getItem('mv_session') || 'sess_' + Math.random().toString(36).substr(2, 9);
@@ -206,6 +267,7 @@ function joinGame() {
         socket.connect();
         setTimeout(() => {
             if (!socket.connected) {
+                setJoinPending(false);
                 btn.disabled = false;
                 btn.innerText = "ΕΙΣΟΔΟΣ";
                 showToast("Δεν υπάρχει σύνδεση με τον server.");
@@ -274,6 +336,7 @@ socket.on('connect_error', () => {
     // Αν δεν έχει καταφέρει ποτέ να συνδεθεί, μην κρατάς τον χρήστη κολλημένο
     // στην οθόνη "Σύνδεση..." επ' αόριστον.
     hideConnectingOverlay();
+    setJoinPending(false);
     const btn = document.getElementById('login-btn');
     if (btn) {
         btn.disabled = false;
@@ -288,6 +351,7 @@ setTimeout(hideConnectingOverlay, 6000);
 socket.on('disconnect', () => {
     actionLocked = false;
     selectedAceIndex = null;
+    setJoinPending(false);
     document.getElementById('reconnect-btn').style.display = 'flex';
 });
 
@@ -305,27 +369,24 @@ socket.on('chatUpdate', data => {
     if (m.children.length > 50) m.removeChild(m.firstChild);
 });
 
-socket.on('playerCountUpdate', count => {
-    const waitingArea = document.getElementById('waiting-area');
-    const loginArea = document.getElementById('login-area');
-    const waitingMsg = document.getElementById('waiting-msg');
-    const startBtn = document.getElementById('start-btn');
-    const loginBtn = document.getElementById('login-btn');
+// Προσωπικό event: μόλις ΕΓΩ μπήκα στο lobby. Μόνο εδώ (και στο rejoinSuccess)
+// επιτρέπεται να φύγει η οθόνη ονόματος.
+socket.on('joinedLobby', () => {
+    hasJoinedLobby = true;
+    setJoinPending(false);
+    renderLobbyUI();
+});
 
+socket.on('playerCountUpdate', count => {
+    lastPlayerCount = count;
+
+    // Μηδέν παίκτες = το lobby μηδενίστηκε (αδράνεια) -> όλοι ξαναμπαίνουν.
     if (count === 0) {
-        waitingArea.style.display = 'none';
-        loginArea.style.display = 'flex';
-        if (loginBtn) {
-            loginBtn.disabled = false;
-            loginBtn.innerText = 'ΕΙΣΟΔΟΣ';
-        }
-        return;
+        hasJoinedLobby = false;
+        setJoinPending(false);
     }
 
-    waitingArea.style.display = 'block';
-    loginArea.style.display = 'none';
-    waitingMsg.innerText = `Συνδεδεμένοι παίκτες: ${count}`;
-    startBtn.style.display = count >= 2 ? 'inline-block' : 'none';
+    renderLobbyUI();
 });
 
 socket.on('gameReady', () => {
@@ -356,6 +417,7 @@ socket.on('gameInterrupted', payload => {
     if (startScreen) startScreen.style.display = 'flex';
 
     lastDiscardCount = 0;
+    renderLobbyUI();
 
     if (payload && payload.message) {
         msgQueue.push(payload.message);
@@ -365,6 +427,8 @@ socket.on('gameInterrupted', payload => {
 
 socket.on('notification', m => {
     if (m === 'Το παιχνίδι έχει ήδη ξεκινήσει!') {
+        setJoinPending(false);
+        renderLobbyUI();
         const btn = document.getElementById('login-btn');
         if (btn) {
             btn.disabled = false;
@@ -481,10 +545,12 @@ socket.on('gameOver', msg => {
 });
 
 socket.on('rejoinSuccess', data => {
-    document.getElementById('login-area').style.display = 'none';
+    hasJoinedLobby = true;
+    setJoinPending(false);
 
     if (Array.isArray(data.players) && data.players.length) {
         scoreboardPlayers = data.players.slice();
+        lastPlayerCount = data.players.length;
     }
 
     if (data.gameStarted) {
@@ -493,8 +559,8 @@ socket.on('rejoinSuccess', data => {
         renderScoreboard();
         document.getElementById('scoreboard').style.display = 'block';
     } else {
-        document.getElementById('waiting-area').style.display = 'block';
         document.getElementById('start-screen').style.display = 'flex';
+        renderLobbyUI();
     }
 });
 
